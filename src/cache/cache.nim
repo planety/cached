@@ -47,19 +47,21 @@ proc put*[A, B](x: var CachedTable[A, B], key: A, value: B) =
   x.map[key] = node
   moveToFront(x, node)
 
-import random, timeit
 
 
-randomize(128)
+when isMainModule:
+  import random, timeit
 
-timeOnce("cached"):
-  var s = initCachedTable[int, int](128)
-  for i in 1 .. 100:
-    s.put(rand(1 .. 126), rand(1 .. 126))
-  s.put(5, 6)
-  echo s.get(12)
-  echo s.get(14).isNone
-  echo s.get(5)
-  echo s.info
-  echo s.map.len
 
+  randomize(128)
+
+  timeOnce("cached"):
+    var s = initCachedTable[int, int](128)
+    for i in 1 .. 100:
+      s.put(rand(1 .. 126), rand(1 .. 126))
+    s.put(5, 6)
+    echo s.get(12)
+    echo s.get(14).isNone
+    echo s.get(5)
+    echo s.info
+    echo s.map.len

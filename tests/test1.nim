@@ -7,6 +7,6 @@
 
 import unittest
 
-import cache
-test "can add":
-  check add(5, 5) == 10
+import cache / cache
+
+

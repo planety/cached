@@ -58,19 +58,20 @@ proc put*[A, B](x: var LockedCachedTable[A, B], key: A, value: B) =
     moveToFront(x, node)
 
 
-import random, timeit
+when isMainModule:
+  import random, timeit
 
 
-randomize(128)
+  randomize(128)
 
 
-timeOnce("cached"):
-  var s = newCachedTable[int, int](128)
-  for i in 1 .. 100:
-    s.put(rand(1 .. 126), rand(1 .. 126))
-  s.put(5, 6)
-  echo s.get(12)
-  echo s.get(14).isNone
-  echo s.get(5)
-  echo s.info
-  echo s.map.len
+  timeOnce("cached"):
+    var s = newCachedTable[int, int](128)
+    for i in 1 .. 100:
+      s.put(rand(1 .. 126), rand(1 .. 126))
+    s.put(5, 6)
+    echo s.get(12)
+    echo s.get(14).isNone
+    echo s.get(5)
+    echo s.info
+    echo s.map.len
