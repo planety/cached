@@ -6,7 +6,6 @@ import macros, hashes
 import common
 
 
-
 type
   LRUCached*[A, B] = object
     map: Table[A, MapValue[A, B]]
@@ -28,14 +27,13 @@ proc moveToFront*[A, B](x: var LRUCached[A, B], node: MapValue[A, B]) =
   x.cached.remove(node)
   x.cached.prepend(node)
 
-proc get*[A, B](x: var LRUCached[A, B], key: A): Option[B] =
+proc get*[A, B](x: var LRUCached[A, B], key: A): B =
   if key in x.map:
     x.info.hits += 1
     let node = x.map[key]
     moveToFront(x, node)
-    return some(node.value.valuePart)
+    return node.value.valuePart
   x.info.misses += 1
-  return none(B)
 
 proc put*[A, B](x: var LRUCached[A, B], key: A, value: B) =
   if key in x.map:
@@ -49,12 +47,9 @@ proc put*[A, B](x: var LRUCached[A, B], key: A, value: B) =
     let node = x.cached.tail
     x.cached.remove(node)
     x.map.del(node.value.keyPart)
-
-
   let node = newDoublyLinkedNode((keyPart: key, valuePart: value))
   x.map[key] = node
   moveToFront(x, node)
-
 
 proc `[]`*[A, B](x: var LRUCached[A, B], key: A): B =
   if key in x.map:
@@ -87,44 +82,51 @@ proc contains*[A, B](x: var LRUCached[A, B], key: A): bool =
   else:
     return false
 
-
 macro cached(x: untyped): untyped =
   for i in 0 ..< x.len:
     expectKind x[i], nnkProcDef
 
   result = newStmtList()
 
+  # maybe many function defs
   for i in 0 ..< x.len:
+    # get information from origin function
     let
-      funcStmt = x[i]
-      funcName = funcStmt[0]
-      funcRewriting = funcStmt[1] # for template or macro, should be nnkEmpty
-      funcGenericParams = funcStmt[2]
-      funcFormalParams = funcStmt[3]
-      returnParams = funcFormalParams[0]
-      funcPragma = funcStmt[4]
-      funcReversed = funcStmt[5]  # reserved slot for future use, should be nnkEmpty
-                                  # funcBody = funcStmt[6]
+      funcStmt = x[i]                    # function statement
+      funcName = funcStmt[0]             # function name
+      funcRewriting = funcStmt[1]        # for template or macro, should be nnkEmpty
+      funcGenericParams = funcStmt[2]    # generic params
+      funcFormalParams = funcStmt[3]     # formal params
+      returnParams = funcFormalParams[0] # return types
+      funcPragma = funcStmt[4]           # function paragma
+      funcReversed = funcStmt[5]         # reserved slot for future use, should be nnkEmpty
+                                         # funcBody = funcStmt[6]
 
 
     let mainBody = newStmtList()
+    # var key: Hash
     mainBody.add newNimNode(nnkVarSection).add(newIdentDefs(newIdentNode("key"),
         newIdentNode("Hash")))
 
-
+    # store func params names
     var funcParamsNames: seq[NimNode]
     for i in 1 ..< funcFormalParams.len:
       funcParamsNames.add funcFormalParams[i][0]
+      # key = hash(key) !& hash(funcFormalParams[i][0])
       mainBody.add newAssignment(newIdentNode("key"), infix(newCall("hash",
           newIdentNode("key")), "!&", newCall("hash",
           funcFormalParams[i][0])))
 
+    # key = !$ key
     mainBody.add newAssignment(newIdentNode("key"), prefix(newIdentNode("key"), "!$"))
+    # if key in table:
+    #   echo "I'm cached
     mainBody.add newIfStmt((infix(newIdentNode("key"), "in", newIdentNode("table")),
-              newStmtList(newCall(newIdentNode("echo"), newStrLitNode(
-                  "I\'m cached")),
-              newNimNode(nnkReturnStmt).add(newNimNode(nnkBracketExpr).add(
-                  newIdentNode("table"), newIdentNode("key"))))))
+              newStmtList(
+                # newCall(newIdentNode("echo"), newStrLitNode(
+                  #   "I\'m cached")),
+      newNimNode(nnkReturnStmt).add(newNimNode(nnkBracketExpr).add(
+        newIdentNode("table"), newIdentNode("key"))))))
 
     mainBody.add funcStmt
     mainBody.add newAssignment(newIdentNode("result"), newCall(funcName,
@@ -132,11 +134,11 @@ macro cached(x: untyped): untyped =
     mainBody.add newAssignment(newNimNode(nnkBracketExpr).add(
       newIdentNode("table"), newIdentNode("key")), newIdentNode("result"))
 
-    var name = strVal(funcName) 
-    name.add "_cached" 
-    name.add "_xzs" 
+    var name = strVal(funcName)
+    name.add "_cached"
+    name.add "_xzs"
     let wrapperNameNode = newIdentNode("wrapper" & name)
-  
+
     let nameNode = newIdentNode(name)
     let main = newNimNode(nnkProcDef).add(
       wrapperNameNode,
@@ -168,14 +170,29 @@ macro cached(x: untyped): untyped =
     )
 
     result.add templateBody
+    # let funcName {.inject.} = nameNode
     result.add newLetStmt(newNimNode(nnkPragmaExpr).add(funcName,
         newNimNode(nnkPragma).add(newIdentNode("inject"))), newCall(nameNode))
 
+import os
 
 cached:
-  proc hello(a: int): string = 
+  proc hello(a: int): string =
+    sleep(50)
     $a
 
+  proc play(b: string): string =
+    $b
+
+# must export manually
+# let funcName {.inject.} = nameNode
+# TODO According to function, export funcName
+export hello
+export play
+
+proc helloWithoutCache(a: int): string =
+  sleep(50)
+  $a
 
 when isMainModule:
   import random, timeit
@@ -184,5 +201,8 @@ when isMainModule:
 
   timeOnce("cached"):
     for i in 1 .. 100:
-      echo hello(rand(100))
- 
+      discard hello(rand(10))
+
+  timeOnce("without cached"):
+    for i in 1 .. 100:
+      discard helloWithoutCache(rand(10))
