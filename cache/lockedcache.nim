@@ -1,6 +1,6 @@
 import tables
 import lists
-import options, rlocks
+import rlocks
 
 import common
 
@@ -24,16 +24,16 @@ proc moveToFront*[A, B](x: var LockedLRUCached[A, B], node: MapValue[A, B]) =
   x.cached.remove(node)
   x.cached.prepend(node)
 
-proc get*[A, B](x: var LockedLRUCached[A, B], key: A): Option[B] =
+proc get*[A, B](x: var LockedLRUCached[A, B], key: A): B =
   if key in x.map:
     withRLock x.rlock:
       x.info.hits += 1
       let node = x.map[key]
       moveToFront(x, node)
-      return some(node.value.valuePart)
+      return node.value.valuePart
   withRLock x.rlock:
     x.info.misses += 1
-  return none(B)
+
 
 proc put*[A, B](x: var LockedLRUCached[A, B], key: A, value: B) =
   if key in x.map:

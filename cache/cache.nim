@@ -1,6 +1,5 @@
 import tables
 import lists
-import options
 import macros, hashes
 
 import common
@@ -120,7 +119,7 @@ macro cached(x: untyped): untyped =
     # key = !$ key
     mainBody.add newAssignment(newIdentNode("key"), prefix(newIdentNode("key"), "!$"))
     # if key in table:
-    #   echo "I'm cached
+    #   return table[key]
     mainBody.add newIfStmt((infix(newIdentNode("key"), "in", newIdentNode("table")),
               newStmtList(
                 # newCall(newIdentNode("echo"), newStrLitNode(
@@ -128,9 +127,12 @@ macro cached(x: untyped): untyped =
       newNimNode(nnkReturnStmt).add(newNimNode(nnkBracketExpr).add(
         newIdentNode("table"), newIdentNode("key"))))))
 
+    # add origin function definitions
     mainBody.add funcStmt
+    # result = funcName()
     mainBody.add newAssignment(newIdentNode("result"), newCall(funcName,
         funcParamsNames))
+    # table[key] = result
     mainBody.add newAssignment(newNimNode(nnkBracketExpr).add(
       newIdentNode("table"), newIdentNode("key")), newIdentNode("result"))
 
@@ -174,30 +176,29 @@ macro cached(x: untyped): untyped =
     result.add newLetStmt(newNimNode(nnkPragmaExpr).add(funcName,
         newNimNode(nnkPragma).add(newIdentNode("inject"))), newCall(nameNode))
 
-import os
-
-cached:
-  proc hello(a: int): string =
-    sleep(50)
-    $a
-
-  proc play(b: string): string =
-    $b
-
-# must export manually
-# let funcName {.inject.} = nameNode
-# TODO According to function, export funcName
-export hello
-export play
-
-proc helloWithoutCache(a: int): string =
-  sleep(50)
-  $a
 
 when isMainModule:
-  import random, timeit
+  import os, random, timeit
 
   randomize(128)
+
+  cached:
+    proc hello(a: int): string =
+      sleep(20)
+      $a
+
+    proc play(b: string): string =
+      $b
+
+  # must export manually
+  # let funcName {.inject.} = nameNode
+  # TODO According to function, export funcName
+  export hello
+  export play
+
+  proc helloWithoutCache(a: int): string =
+    sleep(20)
+    $a
 
   timeOnce("cached"):
     for i in 1 .. 100:
