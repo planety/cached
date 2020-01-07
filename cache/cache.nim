@@ -85,44 +85,44 @@ macro cached(x: untyped): untyped =
 
     let mainBody = newStmtList()
     # var key: Hash
-    mainBody.add newNimNode(nnkVarSection).add(newIdentDefs(newIdentNode("key"),
-        newIdentNode("Hash")))
+    mainBody.add newNimNode(nnkVarSection).add(newIdentDefs(ident"key",
+        ident"Hash"))
 
     # store func params names
     var funcParamsNames: seq[NimNode]
     for i in 1 ..< funcFormalParams.len:
       funcParamsNames.add funcFormalParams[i][0]
       # key = hash(key) !& hash(funcFormalParams[i][0])
-      mainBody.add newAssignment(newIdentNode("key"), infix(newCall("hash",
-          newIdentNode("key")), "!&", newCall("hash",
+      mainBody.add newAssignment(ident"key", infix(newCall("hash",
+          ident"key"), "!&", newCall("hash",
           funcFormalParams[i][0])))
 
     # key = !$ key
-    mainBody.add newAssignment(newIdentNode("key"), prefix(newIdentNode("key"), "!$"))
+    mainBody.add newAssignment(ident"key", prefix(ident"key", "!$"))
     # if key in table:
     #   return table[key]
-    mainBody.add newIfStmt((infix(newIdentNode("key"), "in", newIdentNode("table")),
+    mainBody.add newIfStmt((infix(ident"key", "in", ident"table"),
               newStmtList(
-                # newCall(newIdentNode("echo"), newStrLitNode(
+                # newCall(ident"echo"), newStrLitNode(
                   #   "I\'m cached")),
       newNimNode(nnkReturnStmt).add(newNimNode(nnkBracketExpr).add(
-        newIdentNode("table"), newIdentNode("key"))))))
+        ident"table", ident"key")))))
 
     # add origin function definitions
     mainBody.add funcStmt
     # result = funcName()
-    mainBody.add newAssignment(newIdentNode("result"), newCall(funcName,
+    mainBody.add newAssignment(ident"result", newCall(funcName,
         funcParamsNames))
     # table[key] = result
     mainBody.add newAssignment(newNimNode(nnkBracketExpr).add(
-      newIdentNode("table"), newIdentNode("key")), newIdentNode("result"))
+      ident"table", ident"key"), ident"result")
 
     var name = strVal(funcName)
     name.add "_cached"
     name.add "_xzs"
-    let wrapperNameNode = newIdentNode("wrapper" & name)
+    let wrapperNameNode = ident("wrapper" & name)
 
-    let nameNode = newIdentNode(name)
+    let nameNode = ident(name)
     let main = newNimNode(nnkProcDef).add(
       wrapperNameNode,
       funcRewriting,
@@ -135,9 +135,9 @@ macro cached(x: untyped): untyped =
 
 
     let body = newStmtList()
-    body.add newVarStmt(newIdentNode("table"),
-          newCall(newNimNode(nnkBracketExpr).add(newIdentNode("initLruCached"),
-          newIdentNode("Hash"), returnParams)))
+    body.add newVarStmt(ident"table",
+          newCall(newNimNode(nnkBracketExpr).add(ident"initLruCached",
+          ident"Hash", returnParams)))
     body.add main
     body.add wrapperNameNode
 
@@ -146,7 +146,7 @@ macro cached(x: untyped): untyped =
       nameNode,
       newEmptyNode(),
       newEmptyNode(),
-      newNimNode(nnkFormalParams).add(newIdentNode("untyped")),
+      newNimNode(nnkFormalParams).add(ident"untyped"),
       newEmptyNode(),
       newEmptyNode(),
       body
@@ -155,7 +155,7 @@ macro cached(x: untyped): untyped =
     result.add templateBody
     # let funcName {.inject.} = nameNode
     result.add newLetStmt(newNimNode(nnkPragmaExpr).add(funcName,
-        newNimNode(nnkPragma).add(newIdentNode("inject"))), newCall(nameNode))
+        newNimNode(nnkPragma).add(ident"inject")), newCall(nameNode))
 
 
 when isMainModule:
