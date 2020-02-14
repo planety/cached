@@ -3,7 +3,7 @@
 version       = "0.1.2"
 author        = "flywind"
 description   = "A cache library."
-license       = "MIT"
+license       = "BSD-3-Clause"
 srcDir        = "src"
 
 
